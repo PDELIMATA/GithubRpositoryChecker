@@ -1,11 +1,15 @@
 package com.delimata.githubrepositorychecker;
 
-import org.springframework.http.HttpStatus;
+import com.delimata.githubrepositorychecker.Model.Repositories;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+import reactor.core.publisher.Mono;
 
-@RestController
+@Controller
 @RequestMapping("/api")
 public class GithubRepositoryController {
 
@@ -16,11 +20,8 @@ public class GithubRepositoryController {
     }
 
     @GetMapping(value = "/repositories/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> getGithubRepositories(@PathVariable String username, @RequestHeader("Accept") String acceptHeader) {
-        if (!acceptHeader.equalsIgnoreCase(MediaType.APPLICATION_JSON_VALUE)) {
-            return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).build();
-        }
-
+    @ResponseBody
+    public Mono<Repositories[]> getGithubRepositories(@PathVariable String username) {
         return githubRepositoryService.fetchDataFromApi(username);
     }
 }

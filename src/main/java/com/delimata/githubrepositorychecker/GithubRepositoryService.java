@@ -2,61 +2,46 @@ package com.delimata.githubrepositorychecker;
 
 import com.delimata.githubrepositorychecker.Model.Branch;
 import com.delimata.githubrepositorychecker.Model.Repositories;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-
-import java.util.Arrays;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Service
 public class GithubRepositoryService {
     private static final String GITHUB_API_URL = "https://api.github.com";
-    private final RestTemplate restTemplate;
-    private final HttpEntity<Void> httpEntity;
+    private final WebClient webClient;
 
-    public GithubRepositoryService() {
-        this.restTemplate = new RestTemplate();
-        this.httpEntity = new HttpEntity<>(new HttpHeaders());
+    public GithubRepositoryService(WebClient webClient) {
+        this.webClient = webClient;
     }
 
-    public ResponseEntity<?> fetchDataFromApi(String username) {
-
+    public Mono<Repositories[]> fetchDataFromApi(String username) {
         String url = GITHUB_API_URL + "/users/" + username + "/repos";
 
-        ResponseEntity<Repositories[]> exchange = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                httpEntity,
-                Repositories[].class
-        );
-
-        if (exchange.getStatusCode() == HttpStatus.NOT_FOUND) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        } else {
-
-            Repositories[] repositories = exchange.getBody();
-            if (repositories == null || repositories.length == 0) {
-                return ResponseEntity.ok(repositories);
-            }
-
-            String branchesUrl = GITHUB_API_URL + "/repos/" + username + "/";
-            Arrays.stream(repositories)
-                    .filter(repo -> !repo.isFork())
-                    .forEach(repo -> {
-                        String urlWithUsernameAndRepo = branchesUrl + repo.getName() + "/branches";
-                        ResponseEntity<Branch[]> response = restTemplate.exchange(
-                                urlWithUsernameAndRepo,
-                                HttpMethod.GET,
-                                httpEntity,
-                                Branch[].class
-                        );
-                        repo.setBranches(response.getBody());
-                    });
-
-            return ResponseEntity.ok().body(repositories);
-        }
+        return webClient.get()
+                .uri(url)
+                .retrieve()
+                .onStatus(HttpStatus.NOT_FOUND::equals, response -> Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND)))
+                .bodyToMono(Repositories[].class)
+                .flatMap(repositories -> Mono.just(repositories)
+                        .filter(repos -> repos.length > 0)
+                        .flatMapMany(Flux::fromArray)
+                        .filter(repo -> !repo.fork())
+                        .flatMap(this::fetchBranchesForRepository)
+                        .collectList()
+                )
+                .map(repositoriesList -> repositoriesList.toArray(new Repositories[0]));
     }
 
-
-
+    private Mono<Repositories> fetchBranchesForRepository(Repositories repo) {
+        String urlWithUsernameAndRepo = GITHUB_API_URL + "/repos/" + repo.owner().login() + "/" + repo.name() + "/branches";
+        return webClient.get()
+                .uri(urlWithUsernameAndRepo)
+                .retrieve()
+                .bodyToMono(Branch[].class)
+                .map(branches -> new Repositories(repo.name(), repo.owner(), repo.fork(), branches));
+    }
 }

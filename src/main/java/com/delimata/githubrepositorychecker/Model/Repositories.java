@@ -1,24 +1,7 @@
 package com.delimata.githubrepositorychecker.Model;
 
-import com.fasterxml.jackson.annotation.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
-@Setter
+public record Repositories(String name, Owner owner, @JsonIgnore boolean fork, Branch[] branches) {
 
-@JsonPropertyOrder({"name","owner","branches"})
-public class Repositories {
-    @JsonProperty("Repository Name")
-    @JsonAlias("name")
-    private String name;
-    private Owner owner;
-    @JsonIgnore
-    private boolean fork;
-    private Branch[] branches;
 }
-

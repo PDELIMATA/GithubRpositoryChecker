@@ -3,12 +3,11 @@ package com.delimata.githubrepositorychecker;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-
 @SpringBootApplication
-public class AtiperaRecruitmentTaskApplication {
+public class GitHubRepositoryChecker {
 
     public static void main(String[] args) {
-        SpringApplication.run(AtiperaRecruitmentTaskApplication.class, args);
+        SpringApplication.run(GitHubRepositoryChecker.class, args);
     }
 
 }
